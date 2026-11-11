@@ -1,5 +1,12 @@
 import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import city from './cities/gion';
+import { createFlyCamera } from './debug/fly-camera';
+import { createBuildings } from './world/buildings';
+import { loadCityData } from './world/data';
+import { createGround } from './world/ground';
+import { createProjection } from './world/projection';
+
+const SKY_RADIUS = 5000;
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -9,13 +16,13 @@ document.body.appendChild(renderer.domElement);
 const scene = new THREE.Scene();
 
 const sky = new THREE.Mesh(
-  new THREE.SphereGeometry(500, 32, 16),
+  new THREE.SphereGeometry(SKY_RADIUS, 32, 16),
   new THREE.ShaderMaterial({
     side: THREE.BackSide,
     depthWrite: false,
     uniforms: {
-      topColor: { value: new THREE.Color(0x4a8fd0) },
-      horizonColor: { value: new THREE.Color(0xdcebf5) },
+      topColor: { value: new THREE.Color(city.palette.sky) },
+      horizonColor: { value: new THREE.Color(city.palette.horizon) },
     },
     vertexShader: /* glsl */ `
       varying vec3 vDirection;
@@ -36,42 +43,33 @@ const sky = new THREE.Mesh(
     `,
   }),
 );
+sky.renderOrder = -1;
 scene.add(sky);
-
-const ground = new THREE.Mesh(
-  new THREE.CircleGeometry(400, 64),
-  new THREE.MeshLambertMaterial({ color: 0x8a9a7b }),
-);
-ground.rotation.x = -Math.PI / 2;
-scene.add(ground);
-
-const cube = new THREE.Mesh(
-  new THREE.BoxGeometry(2, 2, 2),
-  new THREE.MeshLambertMaterial({ color: 0xc8452f }),
-);
-cube.position.y = 1;
-scene.add(cube);
 
 scene.add(new THREE.HemisphereLight(0xdcebf5, 0x6b6250, 1.6));
 const sun = new THREE.DirectionalLight(0xfff1dc, 2.2);
 sun.position.set(30, 50, 20);
 scene.add(sun);
 
+const projection = createProjection(city.bbox);
+const data = await loadCityData(city);
+scene.add(createGround(data, projection, city.palette));
+scene.add(createBuildings(data.buildings, projection, city.palette.building));
+
 const camera = new THREE.PerspectiveCamera(
   55,
   window.innerWidth / window.innerHeight,
-  0.1,
-  1200,
+  1,
+  SKY_RADIUS * 2.5,
 );
-camera.position.set(6, 4, 8);
 
-const controls = new OrbitControls(camera, renderer.domElement);
-controls.target.copy(cube.position);
-controls.enableDamping = true;
-controls.minDistance = 4;
-controls.maxDistance = 60;
-// 鏡頭唔可以轉到地面以下
-controls.maxPolarAngle = Math.PI / 2 - 0.05;
+// 起始鏡頭：由高空睇落去，北方向上，成個 bbox 入鏡
+const halfFovTangent = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+const overviewHeight =
+  Math.max(projection.halfExtent.y, projection.halfExtent.x / camera.aspect) / halfFovTangent;
+camera.position.set(0, overviewHeight * 1.05, overviewHeight * 0.15);
+
+const updateCamera = createFlyCamera(camera, renderer.domElement);
 
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
@@ -79,7 +77,12 @@ window.addEventListener('resize', () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-renderer.setAnimationLoop(() => {
-  controls.update();
+const clock = new THREE.Timer();
+renderer.setAnimationLoop((timestamp) => {
+  clock.update(timestamp);
+  updateCamera(clock.getDelta());
+  sky.position.copy(camera.position);
   renderer.render(scene, camera);
 });
+
+if (import.meta.env.DEV) Object.assign(window, { renderer, camera, scene });
