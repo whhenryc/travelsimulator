@@ -82,7 +82,7 @@ export function createLighting(
   );
 
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = lowPower ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
+  renderer.shadowMap.type = THREE.PCFShadowMap;
 
   const sun = new THREE.DirectionalLight(lighting.sunColor, lighting.sunIntensity);
   sun.castShadow = true;

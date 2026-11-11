@@ -2,14 +2,13 @@ import type { CollisionWorld } from '../world/collision';
 
 const MASTER_VOLUME = 0.8;
 const RIVER_MAX_VOLUME = 0.55;
-const MURMUR_VOLUME = 0.16;
+const BUBBLE_VOICES = 4;
+const BUBBLE_INTERVAL_MS = 70;
 const MUSIC_VOLUME = 0.2;
 const WATER_SAMPLE_INTERVAL = 0.3;
 const WATER_SAMPLE_SPACING = 8;
 const WATER_SAMPLE_STEPS = 4;
 const WATER_FULL_VOLUME_WEIGHT = 6;
-const MURMUR_VOICES = 5;
-const MURMUR_SYLLABLE_MS = 130;
 // 都節音階（D、E♭、G、A、B♭），用嚟砌似箏嘅旋律
 const MUSIC_NOTES = [146.83, 196, 220, 233.08, 293.66, 311.13, 392, 440, 466.16, 587.33];
 const MUSIC_NOTE_SECONDS = 3.5;
@@ -87,50 +86,50 @@ class AmbienceEngine {
     this.master.gain.value = MASTER_VOLUME;
     this.master.connect(context.destination);
 
-    // 河水：低沉嘅布朗噪音加少少高頻水花
+    // 河水：主要係高頻流水沙沙聲，加少少低頻，避免聽落似風
     const brown = loopedNoise(context, noiseBuffer(context, 4, true));
     const body = context.createBiquadFilter();
     body.type = 'bandpass';
-    body.frequency.value = 650;
-    body.Q.value = 0.6;
-    const white = loopedNoise(context, noiseBuffer(context, 3, false));
-    const sparkle = context.createBiquadFilter();
-    sparkle.type = 'bandpass';
-    sparkle.frequency.value = 2600;
-    sparkle.Q.value = 1.2;
-    const sparkleGain = context.createGain();
-    sparkleGain.gain.value = 0.12;
-    brown.connect(body).connect(this.river);
-    white.connect(sparkle).connect(sparkleGain).connect(this.river);
-    this.river.gain.value = 0;
-    this.river.connect(this.master);
+    body.frequency.value = 900;
+    body.Q.value = 0.8;
+    const bodyGain = context.createGain();
+    bodyGain.gain.value = 0.25;
+    brown.connect(body).connect(bodyGain).connect(this.river);
 
-    // 遠處人聲：幾組窄頻噪音，按音節節奏隨機開合
-    const murmurBus = context.createGain();
-    murmurBus.gain.value = MURMUR_VOLUME;
-    const murmurTone = context.createBiquadFilter();
-    murmurTone.type = 'lowpass';
-    murmurTone.frequency.value = 1800;
-    murmurBus.connect(murmurTone).connect(this.master);
-    const voiceNoise = loopedNoise(context, noiseBuffer(context, 3, false));
-    const voices = Array.from({ length: MURMUR_VOICES }, () => {
-      const formant = context.createBiquadFilter();
-      formant.type = 'bandpass';
-      formant.Q.value = 5;
-      formant.frequency.value = 350 + Math.random() * 850;
+    const white = loopedNoise(context, noiseBuffer(context, 3, false));
+    const rush = context.createBiquadFilter();
+    rush.type = 'highpass';
+    rush.frequency.value = 2200;
+    const rushGain = context.createGain();
+    rushGain.gain.value = 0.08;
+    white.connect(rush).connect(rushGain).connect(this.river);
+
+    // 水泡聲：窄頻噪音快速跳音高同開合，似水流過石頭咕嚕咕嚕
+    const bubbles = Array.from({ length: BUBBLE_VOICES }, () => {
+      const resonance = context.createBiquadFilter();
+      resonance.type = 'bandpass';
+      resonance.Q.value = 14;
+      resonance.frequency.value = 1000;
       const gain = context.createGain();
       gain.gain.value = 0;
-      voiceNoise.connect(formant).connect(gain).connect(murmurBus);
-      return { formant, gain };
+      white.connect(resonance).connect(gain).connect(this.river);
+      return { resonance, gain };
     });
     window.setInterval(() => {
       const now = context.currentTime;
-      for (const { formant, gain } of voices) {
-        const talking = Math.random() < 0.55;
-        gain.gain.setTargetAtTime(talking ? 0.3 + Math.random() * 0.7 : 0, now, 0.04);
-        formant.frequency.setTargetAtTime(350 + Math.random() * 850, now, 0.08);
+      for (const { resonance, gain } of bubbles) {
+        if (Math.random() < 0.45) continue;
+        const start = 600 + Math.random() * 1400;
+        resonance.frequency.setValueAtTime(start, now);
+        resonance.frequency.exponentialRampToValueAtTime(start * (1.4 + Math.random()), now + 0.06);
+        gain.gain.setValueAtTime(0, now);
+        gain.gain.linearRampToValueAtTime(0.6 + Math.random() * 0.8, now + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08 + Math.random() * 0.06);
       }
-    }, MURMUR_SYLLABLE_MS);
+    }, BUBBLE_INTERVAL_MS);
+
+    this.river.gain.value = 0;
+    this.river.connect(this.master);
 
     // 背景音樂：撥弦加殘響
     this.plucks = MUSIC_NOTES.map((frequency) => pluckBuffer(context, frequency));
