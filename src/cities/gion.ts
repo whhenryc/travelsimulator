@@ -41,6 +41,23 @@ const gion: CityConfig = {
     fogNear: 60,
     fogFar: 420,
   },
+  landmarks: [
+    {
+      id: 'nishiromon',
+      name: '八坂神社西樓門',
+      model: 'nishiromon.glb',
+      osmId: 'way/105449683',
+      frontDegrees: 270,
+    },
+    { id: 'minamiza', name: '南座', model: 'minamiza.glb', osmId: 'way/273471468', frontDegrees: 0 },
+    {
+      id: 'tatsumi-bashi',
+      name: '白川巽橋',
+      model: 'tatsumi-bashi.glb',
+      osmId: 'way/190891717',
+      frontDegrees: 173,
+    },
+  ],
 };
 
 export default gion;

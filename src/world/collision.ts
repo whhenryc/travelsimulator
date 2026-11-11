@@ -25,11 +25,18 @@ export interface CollisionWorld {
   raycast(ax: number, ay: number, az: number, bx: number, by: number, bz: number): number;
   /** 加入細小方柱障礙物（樹幹、路燈柱） */
   addPillars(centers: Vector2[], halfWidth: number, height: number): void;
+  /** 加入任意多邊形障礙物（例如地標模型嘅碰撞方塊） */
+  addRing(ring: Vector2[], height: number): void;
 }
 
-function buildSegments(data: CityData, projection: Projection): number[] {
+function buildSegments(
+  data: CityData,
+  projection: Projection,
+  excludedIds: ReadonlySet<string>,
+): number[] {
   const segments: number[] = [];
   for (const feature of data.buildings.features) {
+    if (excludedIds.has(String(feature.properties?.['id']))) continue;
     for (const block of buildingBlocks(feature, projection)) {
       // 懸空屋頂下面可以行，只有落地嘅部分（牆、柱）先會擋路
       if (block.bottom > 0) continue;
@@ -121,9 +128,13 @@ function rasterizeWater(
   return { mask, width, height };
 }
 
-export function createCollisionWorld(data: CityData, projection: Projection): CollisionWorld {
+export function createCollisionWorld(
+  data: CityData,
+  projection: Projection,
+  excludedIds: ReadonlySet<string> = new Set(),
+): CollisionWorld {
   const { halfExtent } = projection;
-  const segments = buildSegments(data, projection);
+  const segments = buildSegments(data, projection, excludedIds);
   const water = rasterizeWater(data, projection);
 
   const originX = -halfExtent.x - GRID_MARGIN;
@@ -154,23 +165,30 @@ export function createCollisionWorld(data: CityData, projection: Projection): Co
   };
   for (let index = 0; index < segments.length; index += SEGMENT_STRIDE) insert(index);
 
+  const addRing = (ring: Vector2[], height: number): void => {
+    ring.forEach((a, i) => {
+      const b = ring[(i + 1) % ring.length]!;
+      const index = segments.length;
+      segments.push(a.x, a.y, b.x, b.y, height);
+      insert(index);
+    });
+  };
+
   return {
     halfExtent,
+    addRing,
 
     addPillars(centers, halfWidth, height) {
       for (const { x, y } of centers) {
-        const corners = [
-          [x - halfWidth, y - halfWidth],
-          [x - halfWidth, y + halfWidth],
-          [x + halfWidth, y + halfWidth],
-          [x + halfWidth, y - halfWidth],
-        ] as const;
-        corners.forEach((a, i) => {
-          const b = corners[(i + 1) % 4]!;
-          const index = segments.length;
-          segments.push(a[0], a[1], b[0], b[1], height);
-          insert(index);
-        });
+        addRing(
+          [
+            new Vector2(x - halfWidth, y - halfWidth),
+            new Vector2(x - halfWidth, y + halfWidth),
+            new Vector2(x + halfWidth, y + halfWidth),
+            new Vector2(x + halfWidth, y - halfWidth),
+          ],
+          height,
+        );
       }
     },
 

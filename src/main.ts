@@ -11,6 +11,7 @@ import { createBuildings } from './world/buildings';
 import { createCollisionWorld } from './world/collision';
 import { loadCityData } from './world/data';
 import { createGround } from './world/ground';
+import { loadLandmarks } from './world/landmarks';
 import { createProps } from './world/props';
 import { createProjection } from './world/projection';
 
@@ -30,9 +31,12 @@ const lighting = createLighting(scene, renderer, city, lowPower);
 const projection = createProjection(city.bbox);
 const data = await loadCityData(city);
 scene.add(createGround(data, projection, city.palette));
-scene.add(createBuildings(data.buildings, projection, city.palette));
+const landmarks = await loadLandmarks(city, data, projection);
+scene.add(landmarks.group);
+scene.add(createBuildings(data.buildings, projection, city.palette, landmarks.hiddenBuildingIds));
 
-const collision = createCollisionWorld(data, projection);
+const collision = createCollisionWorld(data, projection, landmarks.replacedCollisionIds);
+for (const { ring, height } of landmarks.colliders) collision.addRing(ring, height);
 scene.add(createProps(data, projection, collision, city.palette));
 
 const camera = new THREE.PerspectiveCamera(

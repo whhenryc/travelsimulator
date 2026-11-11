@@ -12,7 +12,8 @@
     "preview": "vite preview",
     "start": "sirv dist --host 0.0.0.0 --port ${PORT:-3000}",
     "typecheck": "tsc --noEmit && tsc --noEmit -p scripts",
-    "fetch:osm": "node scripts/fetch-osm.ts"
+    "fetch:osm": "node scripts/fetch-osm.ts",
+    "build:landmarks": "node scripts/build-landmarks.ts"
   },
   "dependencies": {
     "sirv-cli": "^3.0.1",

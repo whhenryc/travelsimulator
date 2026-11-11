@@ -49,6 +49,17 @@ export interface CityLighting {
   fogFar: number;
 }
 
+export interface LandmarkConfig {
+  id: string;
+  name: string;
+  /** public/models/<city>/ 入面嘅 glb 檔名 */
+  model: string;
+  /** 對位用嘅 OSM 要素：建築會被模型取代；路（例如橋）只用嚟定位 */
+  osmId: string;
+  /** 正門面向嘅方位，0 為北，90 為東 */
+  frontDegrees: number;
+}
+
 export interface CityConfig {
   id: string;
   name: string;
@@ -56,4 +67,5 @@ export interface CityConfig {
   spawn: { position: [lon: number, lat: number]; headingDegrees: number };
   palette: CityPalette;
   lighting: CityLighting;
+  landmarks: LandmarkConfig[];
 }

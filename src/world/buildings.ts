@@ -397,6 +397,7 @@ export function createBuildings(
   collection: FeatureCollection,
   projection: Projection,
   palette: CityPalette,
+  hiddenIds: ReadonlySet<string> = new Set(),
 ): THREE.Group {
   // 按位置分塊，等鏡頭同陰影可以跳過睇唔到嘅部分
   const chunks = new Map<string, BuildingGeometry>();
@@ -412,6 +413,7 @@ export function createBuildings(
   const wood = new THREE.Color(palette.woodDark);
 
   for (const feature of collection.features) {
+    if (hiddenIds.has(String(feature.properties?.['id']))) continue;
     const blocks = buildingBlocks(feature, projection);
     const anchor = blocks[0]?.rings[0]?.[0];
     if (!anchor) continue;
