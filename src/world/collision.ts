@@ -23,9 +23,11 @@ export interface CollisionWorld {
   isWater(x: number, z: number): boolean;
   /** 由 (ax, ay, az) 去 (bx, by, bz) 第一個撞到建築嘅位置，回傳 0 至 1，冇撞到就係 1 */
   raycast(ax: number, ay: number, az: number, bx: number, by: number, bz: number): number;
+  /** 加入細小方柱障礙物（樹幹、路燈柱） */
+  addPillars(centers: Vector2[], halfWidth: number, height: number): void;
 }
 
-function buildSegments(data: CityData, projection: Projection): Float32Array {
+function buildSegments(data: CityData, projection: Projection): number[] {
   const segments: number[] = [];
   for (const feature of data.buildings.features) {
     for (const block of buildingBlocks(feature, projection)) {
@@ -39,7 +41,7 @@ function buildSegments(data: CityData, projection: Projection): Float32Array {
       }
     }
   }
-  return new Float32Array(segments);
+  return segments;
 }
 
 function traceLine(
@@ -135,7 +137,7 @@ export function createCollisionWorld(data: CityData, projection: Projection): Co
   const rowOf = (z: number): number =>
     Math.min(rows - 1, Math.max(0, Math.floor((z - originZ) / CELL_SIZE)));
 
-  for (let index = 0; index < segments.length; index += SEGMENT_STRIDE) {
+  const insert = (index: number): void => {
     const ax = segments[index]!;
     const az = segments[index + 1]!;
     const bx = segments[index + 2]!;
@@ -149,10 +151,28 @@ export function createCollisionWorld(data: CityData, projection: Projection): Co
         cells[row * columns + column]!.push(index);
       }
     }
-  }
+  };
+  for (let index = 0; index < segments.length; index += SEGMENT_STRIDE) insert(index);
 
   return {
     halfExtent,
+
+    addPillars(centers, halfWidth, height) {
+      for (const { x, y } of centers) {
+        const corners = [
+          [x - halfWidth, y - halfWidth],
+          [x - halfWidth, y + halfWidth],
+          [x + halfWidth, y + halfWidth],
+          [x + halfWidth, y - halfWidth],
+        ] as const;
+        corners.forEach((a, i) => {
+          const b = corners[(i + 1) % 4]!;
+          const index = segments.length;
+          segments.push(a[0], a[1], b[0], b[1], height);
+          insert(index);
+        });
+      }
+    },
 
     resolveBuildings(position, radius) {
       const cell = cells[rowOf(position.y) * columns + columnOf(position.x)]!;

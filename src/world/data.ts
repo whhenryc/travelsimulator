@@ -6,6 +6,7 @@ export interface CityData {
   roads: FeatureCollection;
   water: FeatureCollection;
   green: FeatureCollection;
+  trees: FeatureCollection;
 }
 
 async function loadLayer(city: CityConfig, name: string): Promise<FeatureCollection> {
@@ -16,8 +17,14 @@ async function loadLayer(city: CityConfig, name: string): Promise<FeatureCollect
 }
 
 export async function loadCityData(city: CityConfig): Promise<CityData> {
-  const [buildings, roads, water, green] = await Promise.all(
-    ['buildings', 'roads', 'water', 'green'].map((name) => loadLayer(city, name)),
+  const [buildings, roads, water, green, trees] = await Promise.all(
+    ['buildings', 'roads', 'water', 'green', 'trees'].map((name) => loadLayer(city, name)),
   );
-  return { buildings: buildings!, roads: roads!, water: water!, green: green! };
+  return {
+    buildings: buildings!,
+    roads: roads!,
+    water: water!,
+    green: green!,
+    trees: trees!,
+  };
 }

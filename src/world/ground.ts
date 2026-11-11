@@ -153,19 +153,30 @@ export function createGround(
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.Float32BufferAttribute(builder.positions, 3));
   geometry.setAttribute('color', new THREE.Float32BufferAttribute(builder.colors, 3));
+  const vertexCount = builder.positions.length / 3;
+  geometry.setAttribute(
+    'normal',
+    new THREE.Float32BufferAttribute(
+      Array.from({ length: vertexCount }, () => [0, 1, 0]).flat(),
+      3,
+    ),
+  );
 
+  // 地面全部喺 y = 0，唔寫深度，靠 renderOrder 疊；要收陰影所以用 Lambert
   const layers = new THREE.Mesh(
     geometry,
-    new THREE.MeshBasicMaterial({ vertexColors: true, depthWrite: false }),
+    new THREE.MeshLambertMaterial({ vertexColors: true, depthWrite: false }),
   );
   layers.renderOrder = 1;
+  layers.receiveShadow = true;
 
   const base = new THREE.Mesh(
     new THREE.CircleGeometry(8000, 64),
-    new THREE.MeshBasicMaterial({ color: palette.ground, depthWrite: false }),
+    new THREE.MeshLambertMaterial({ color: palette.ground, depthWrite: false }),
   );
   base.rotation.x = -Math.PI / 2;
   base.renderOrder = 0;
+  base.receiveShadow = true;
 
   const group = new THREE.Group();
   group.add(base, layers);

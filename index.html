@@ -49,6 +49,19 @@
       .joystick.running .joystick-knob {
         background: rgb(255 214 140 / 95%);
       }
+      #sound-toggle {
+        position: fixed;
+        top: calc(env(safe-area-inset-top, 0px) + 10px);
+        right: 10px;
+        z-index: 10;
+        padding: 6px 12px;
+        font: 14px/1.2 system-ui, sans-serif;
+        color: #fff;
+        background: rgb(30 22 18 / 55%);
+        border: 1px solid rgb(255 255 255 / 35%);
+        border-radius: 999px;
+        cursor: pointer;
+      }
       #attribution {
         position: fixed;
         right: 0;
