@@ -20,5 +20,6 @@ export interface CityConfig {
   id: string;
   name: string;
   bbox: BBox;
+  spawn: { position: [lon: number, lat: number]; headingDegrees: number };
   palette: CityPalette;
 }

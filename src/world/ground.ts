@@ -31,6 +31,16 @@ const WATERWAY_WIDTHS: Record<string, number> = {
   ditch: 2,
   drain: 2,
 };
+
+export function roadWidth(highway: unknown): number | undefined {
+  const key = String(highway);
+  return MAJOR_ROAD_WIDTHS[key] ?? MINOR_ROAD_WIDTHS[key];
+}
+
+export function waterwayWidth(waterway: unknown): number | undefined {
+  return WATERWAY_WIDTHS[String(waterway)];
+}
+
 const JOIN_DISC_MIN_WIDTH = 4;
 const JOIN_DISC_SEGMENTS = 10;
 

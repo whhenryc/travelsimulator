@@ -4,6 +4,8 @@ const gion: CityConfig = {
   id: 'gion',
   name: '京都祇園',
   bbox: { south: 34.9985, west: 135.7705, north: 35.0075, east: 135.78 },
+  // 四條大橋中間，面向東邊嘅八坂神社
+  spawn: { position: [135.7715, 35.00382], headingDegrees: 90 },
   palette: {
     sky: 0x4a8fd0,
     horizon: 0xdcebf5,

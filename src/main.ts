@@ -1,12 +1,18 @@
 import * as THREE from 'three';
 import city from './cities/gion';
-import { createFlyCamera } from './debug/fly-camera';
+import { createAvatar } from './player/avatar';
+import { ThirdPersonCamera } from './player/camera';
+import { PlayerController } from './player/controller';
+import { createInput } from './player/input';
 import { createBuildings } from './world/buildings';
+import { createCollisionWorld } from './world/collision';
 import { loadCityData } from './world/data';
 import { createGround } from './world/ground';
 import { createProjection } from './world/projection';
 
-const SKY_RADIUS = 5000;
+const SKY_RADIUS = 3000;
+const MAX_FRAME_SECONDS = 0.05;
+const HIDE_AVATAR_DISTANCE = 1.1;
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -56,20 +62,21 @@ const data = await loadCityData(city);
 scene.add(createGround(data, projection, city.palette));
 scene.add(createBuildings(data.buildings, projection, city.palette.building));
 
+const collision = createCollisionWorld(data, projection);
+
 const camera = new THREE.PerspectiveCamera(
-  55,
+  60,
   window.innerWidth / window.innerHeight,
-  1,
+  0.15,
   SKY_RADIUS * 2.5,
 );
 
-// 起始鏡頭：由高空睇落去，北方向上，成個 bbox 入鏡
-const halfFovTangent = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
-const overviewHeight =
-  Math.max(projection.halfExtent.y, projection.halfExtent.x / camera.aspect) / halfFovTangent;
-camera.position.set(0, overviewHeight * 1.05, overviewHeight * 0.15);
-
-const updateCamera = createFlyCamera(camera, renderer.domElement);
+const startYaw = -THREE.MathUtils.degToRad(city.spawn.headingDegrees);
+const player = new PlayerController(collision, projection.toLocal(city.spawn.position), startYaw);
+const followCamera = new ThirdPersonCamera(camera, collision, startYaw);
+const avatar = createAvatar();
+scene.add(avatar.object);
+const input = createInput(renderer.domElement);
 
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
@@ -80,9 +87,25 @@ window.addEventListener('resize', () => {
 const clock = new THREE.Timer();
 renderer.setAnimationLoop((timestamp) => {
   clock.update(timestamp);
-  updateCamera(clock.getDelta());
+  const deltaSeconds = Math.min(clock.getDelta(), MAX_FRAME_SECONDS);
+
+  const state = input.read();
+  followCamera.applyLook(state);
+  player.update(deltaSeconds, state, followCamera.yaw);
+  avatar.update(
+    player.position.x,
+    player.position.y,
+    player.facing,
+    player.walkPhase,
+    player.speedRatio,
+  );
+
+  const distance = followCamera.update(deltaSeconds, player.position.x, player.position.y);
+  avatar.object.visible = distance > HIDE_AVATAR_DISTANCE;
   sky.position.copy(camera.position);
   renderer.render(scene, camera);
 });
 
-if (import.meta.env.DEV) Object.assign(window, { renderer, camera, scene });
+if (import.meta.env.DEV) {
+  Object.assign(window, { renderer, camera, collision, player, followCamera, data, projection });
+}
