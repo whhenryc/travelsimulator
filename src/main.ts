@@ -6,14 +6,21 @@ import { ThirdPersonCamera } from './player/camera';
 import { PlayerController } from './player/controller';
 import { createInput } from './player/input';
 import { createLighting } from './style/lighting';
+import { createItineraryPanel } from './ui/itinerary';
+import { createMinimap } from './ui/minimap';
+import { createPlaces } from './ui/places';
+import { createPoiCard, createPoiPrompt } from './ui/poi-card';
 import { createSoundToggle } from './ui/sound-toggle';
+import './ui/ui.css';
 import { createBuildings } from './world/buildings';
 import { createCollisionWorld } from './world/collision';
 import { loadCityData } from './world/data';
 import { createGround } from './world/ground';
 import { loadLandmarks } from './world/landmarks';
+import { createPoiMarkers } from './world/poi-markers';
 import { createProps } from './world/props';
 import { createProjection } from './world/projection';
+import { createWalkGraph } from './world/walk-graph';
 
 const MAX_FRAME_SECONDS = 0.05;
 const HIDE_AVATAR_DISTANCE = 1.1;
@@ -55,6 +62,22 @@ const input = createInput(renderer.domElement);
 const ambience = createAmbience(collision);
 createSoundToggle(ambience);
 
+const places = createPlaces(city, projection, createWalkGraph(data.roads, projection), () => player.position);
+const poiCard = createPoiCard(places);
+places.setOpenCard((id) => poiCard.open(id));
+const poiPrompt = createPoiPrompt(places, poiCard);
+createItineraryPanel(places);
+const minimap = createMinimap(places, data, projection, city.palette);
+const poiMarkers = createPoiMarkers(city.pois, projection, city.palette);
+scene.add(poiMarkers.object);
+const savedIds = new Set<string>();
+const syncSaved = (): void => {
+  savedIds.clear();
+  for (const id of places.itinerary.ids) savedIds.add(id);
+};
+places.itinerary.subscribe(syncSaved);
+syncSaved();
+
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
@@ -76,9 +99,12 @@ renderer.setAnimationLoop((timestamp) => {
   avatar.object.visible = distance > HIDE_AVATAR_DISTANCE;
   lighting.update(x, z, camera.position);
   ambience.update(x, z, clock.getElapsed());
+  const nearbyId = poiPrompt.update();
+  poiMarkers.update(clock.getElapsed(), camera.position, savedIds, nearbyId);
+  minimap.update(clock.getElapsed(), x, z, player.facing);
   renderer.render(scene, camera);
 });
 
 if (import.meta.env.DEV) {
-  Object.assign(window, { renderer, camera, collision, player, followCamera, data, projection, scene });
+  Object.assign(window, { renderer, camera, collision, player, followCamera, data, projection, scene, places, poiCard });
 }

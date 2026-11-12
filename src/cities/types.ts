@@ -60,6 +60,20 @@ export interface LandmarkConfig {
   frontDegrees: number;
 }
 
+export interface PoiConfig {
+  id: string;
+  name: { zh: string; en: string; ja: string };
+  position: [lon: number, lat: number];
+  /** 行入呢個半徑（米）就提示 */
+  radius: number;
+  summary: string;
+  /** 實用提示，例如開放時間、禮儀 */
+  tip?: string;
+  stayMinutes: number;
+  /** 真實相片（Wikimedia Commons） */
+  photoUrl: string;
+}
+
 export interface CityConfig {
   id: string;
   name: string;
@@ -68,4 +82,5 @@ export interface CityConfig {
   palette: CityPalette;
   lighting: CityLighting;
   landmarks: LandmarkConfig[];
+  pois: PoiConfig[];
 }
